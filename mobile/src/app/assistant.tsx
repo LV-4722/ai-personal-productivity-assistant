@@ -4,15 +4,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { sendAssistantMessage } from '@/services/assistant-api';
 import { AssistantResponse } from '@/types/assistant';
@@ -117,9 +117,9 @@ export default function AssistantScreen() {
   return (
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.select({ ios: 'padding', default: undefined })}
+        behavior={Platform.select({ ios: 'padding', android: undefined })}
         style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
           <View style={styles.header}>
             <ThemedText type="subtitle">Assistant</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
@@ -135,6 +135,7 @@ export default function AssistantScreen() {
             contentContainerStyle={styles.messagesContent}
             keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+            style={styles.messagesList}
           />
 
           {error ? (
@@ -176,6 +177,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   header: { gap: Spacing.half, paddingHorizontal: Spacing.four, paddingVertical: Spacing.three },
+  messagesList: { flex: 1 },
   messagesContent: { gap: Spacing.two, paddingHorizontal: Spacing.four, paddingBottom: Spacing.three },
   messageRow: { alignItems: 'flex-start' },
   userMessageRow: { alignItems: 'flex-end' },
@@ -187,7 +189,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     flexDirection: 'row',
     gap: Spacing.two,
-    paddingBottom: BottomTabInset + Spacing.two,
+    paddingBottom: Spacing.two,
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
   },

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
-import { Alert, FlatList, Pressable, SafeAreaView, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TaskFormModal } from '@/components/task-form-modal';
 import { ThemedText } from '@/components/themed-text';
@@ -224,7 +225,7 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
         <View style={styles.header}>
           <View>
             <ThemedText type="subtitle">Tasks</ThemedText>
