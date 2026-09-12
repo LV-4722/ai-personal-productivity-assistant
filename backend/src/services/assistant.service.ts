@@ -8,7 +8,7 @@ import {
   updateTask,
 } from "./task.service.js";
 import { AssistantIntent } from "../types/assistant.js";
-import { Task } from "../types/task.js";
+import { Task, UpdateTaskInput } from "../types/task.js";
 
 export interface AssistantServiceResult {
   intent: AssistantIntent;
@@ -33,6 +33,15 @@ function parseDueDate(value: string | null): Date | null {
 
 function normalizeTitle(title: string): string {
   return title.trim().toLocaleLowerCase();
+}
+
+function matchesTaskReference(taskTitle: string, reference: string): boolean {
+  const normalizedTitle = normalizeTitle(taskTitle);
+
+  return (
+    normalizedTitle === reference ||
+    normalizedTitle.startsWith(`${reference} `)
+  );
 }
 
 function getCalendarDate(date: Date, timeZone: string): string {
@@ -97,6 +106,8 @@ export async function handleAssistantMessage(
       (task) =>
         (intent.filter.completed === null ||
           task.completed === intent.filter.completed) &&
+        (intent.filter.priority === null ||
+          task.priority === intent.filter.priority) &&
         (filterDueDate === null ||
           isDueOnDate(task, filterDueDate, timeZone)),
     );
@@ -122,7 +133,7 @@ export async function handleAssistantMessage(
 
     const tasks = await getTasks();
     const matches = tasks.filter(
-      (task) => normalizeTitle(task.title) === reference,
+      (task) => matchesTaskReference(task.title, reference),
     );
 
     if (matches.length === 0) {
@@ -151,6 +162,58 @@ export async function handleAssistantMessage(
     return {
       intent,
       message: `Completed task: ${task.title}`,
+      task,
+    };
+  }
+
+  if (intent.action === "UPDATE_TASK") {
+    const reference = normalizeTitle(intent.task_reference.title);
+    const tasks = await getTasks();
+    const matches = tasks.filter(
+      (task) => matchesTaskReference(task.title, reference),
+    );
+
+    if (matches.length === 0) {
+      return {
+        intent,
+        message: `No task found with the title "${intent.task_reference.title}".`,
+      };
+    }
+
+    if (matches.length > 1) {
+      return {
+        intent,
+        message: `More than one task matches "${intent.task_reference.title}". Please be more specific.`,
+      };
+    }
+
+    const input: UpdateTaskInput = {
+      ...(intent.updates.title !== undefined && {
+        title: intent.updates.title.trim(),
+      }),
+      ...(intent.updates.description !== undefined && {
+        description: intent.updates.description,
+      }),
+      ...(intent.updates.priority !== undefined && {
+        priority: intent.updates.priority,
+      }),
+      ...(intent.updates.due_date !== undefined && {
+        due_date: parseDueDate(intent.updates.due_date),
+      }),
+    };
+
+    const task = await updateTask(matches[0].id, input);
+
+    if (!task) {
+      return {
+        intent,
+        message: "The matching task is no longer available.",
+      };
+    }
+
+    return {
+      intent,
+      message: `Updated task: ${task.title}`,
       task,
     };
   }
