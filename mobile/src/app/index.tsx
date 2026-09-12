@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, Pressable, SafeAreaView, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, SafeAreaView, StyleSheet, View } from 'react-native';
 
+import { TaskFormModal } from '@/components/task-form-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getTasks } from '@/services/task-api';
-import { Task } from '@/types/task';
+import { createTask, deleteTask, getTasks, updateTask } from '@/services/task-api';
+import { CreateTaskInput, Task } from '@/types/task';
 
 function formatDueDate(dueDate: string): string {
   const date = new Date(dueDate);
@@ -18,22 +19,36 @@ function formatDueDate(dueDate: string): string {
   return date.toLocaleDateString();
 }
 
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function HomeScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFormVisible, setIsFormVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mutatingTaskId, setMutatingTaskId] = useState<number | null>(null);
   const theme = useTheme();
 
-  const loadTasks = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const loadTasks = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
+
+    setListError(null);
 
     try {
       setTasks(await getTasks());
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unable to load tasks.');
+    } catch (error) {
+      setListError(errorMessage(error, 'Unable to load tasks.'));
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -41,7 +56,92 @@ export default function HomeScreen() {
     void loadTasks();
   }, [loadTasks]);
 
+  const openCreateForm = () => {
+    setActionError(null);
+    setEditingTask(null);
+    setIsFormVisible(true);
+  };
+
+  const openEditForm = (task: Task) => {
+    setActionError(null);
+    setEditingTask(task);
+    setIsFormVisible(true);
+  };
+
+  const closeForm = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsFormVisible(false);
+    setEditingTask(null);
+    setActionError(null);
+  };
+
+  const handleFormSave = async (input: CreateTaskInput) => {
+    setIsSubmitting(true);
+    setActionError(null);
+
+    try {
+      if (editingTask) {
+        await updateTask(editingTask.id, input);
+      } else {
+        await createTask(input);
+      }
+
+      setIsFormVisible(false);
+      setEditingTask(null);
+      await loadTasks(false);
+    } catch (error) {
+      setActionError(errorMessage(error, 'Unable to save task.'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleToggleCompleted = async (task: Task) => {
+    setMutatingTaskId(task.id);
+    setActionError(null);
+
+    try {
+      await updateTask(task.id, { completed: !task.completed });
+      await loadTasks(false);
+    } catch (error) {
+      setActionError(errorMessage(error, 'Unable to update task.'));
+    } finally {
+      setMutatingTaskId(null);
+    }
+  };
+
+  const deleteSelectedTask = async (task: Task) => {
+    setMutatingTaskId(task.id);
+    setActionError(null);
+
+    try {
+      await deleteTask(task.id);
+      await loadTasks(false);
+    } catch (error) {
+      setActionError(errorMessage(error, 'Unable to delete task.'));
+    } finally {
+      setMutatingTaskId(null);
+    }
+  };
+
+  const handleDelete = (task: Task) => {
+    Alert.alert('Delete task?', `Delete “${task.title}”? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void deleteSelectedTask(task);
+        },
+      },
+    ]);
+  };
+
   const renderTask = ({ item }: { item: Task }) => {
+    const isMutating = mutatingTaskId === item.id;
     const status = item.completed ? 'Completed' : 'Pending';
 
     return (
@@ -57,32 +157,76 @@ export default function HomeScreen() {
           </ThemedView>
         </View>
 
+        {item.description ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            {item.description}
+          </ThemedText>
+        ) : null}
+
         <ThemedText type="small" themeColor="textSecondary">
           {status}
           {item.due_date ? ` · Due ${formatDueDate(item.due_date)}` : ''}
         </ThemedText>
+
+        <View style={styles.taskActions}>
+          <Pressable
+            disabled={isMutating}
+            onPress={() => void handleToggleCompleted(item)}
+            style={styles.taskActionButton}>
+            <ThemedView type="backgroundSelected" style={styles.taskActionContent}>
+              <ThemedText type="smallBold">
+                {isMutating ? 'Saving...' : item.completed ? 'Mark pending' : 'Complete'}
+              </ThemedText>
+            </ThemedView>
+          </Pressable>
+          <Pressable
+            disabled={isMutating}
+            onPress={() => openEditForm(item)}
+            style={styles.taskActionButton}>
+            <ThemedView type="backgroundSelected" style={styles.taskActionContent}>
+              <ThemedText type="smallBold">Edit</ThemedText>
+            </ThemedView>
+          </Pressable>
+          <Pressable
+            disabled={isMutating}
+            onPress={() => handleDelete(item)}
+            style={styles.taskActionButton}>
+            <ThemedView type="backgroundSelected" style={styles.taskActionContent}>
+              <ThemedText type="smallBold">Delete</ThemedText>
+            </ThemedView>
+          </Pressable>
+        </View>
       </ThemedView>
     );
   };
+
+  const showInitialError = Boolean(listError && tasks.length === 0);
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <ThemedText type="subtitle">Tasks</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Your current task list
-          </ThemedText>
+          <View>
+            <ThemedText type="subtitle">Tasks</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Your current task list
+            </ThemedText>
+          </View>
+          <Pressable onPress={openCreateForm} style={styles.addButton}>
+            <ThemedView type="backgroundSelected" style={styles.addButtonContent}>
+              <ThemedText type="smallBold">Add task</ThemedText>
+            </ThemedView>
+          </Pressable>
         </View>
 
         {isLoading ? (
           <View style={styles.centeredState}>
             <ThemedText>Loading tasks…</ThemedText>
           </View>
-        ) : error ? (
+        ) : showInitialError ? (
           <View style={styles.centeredState}>
             <ThemedText type="small" style={styles.errorText}>
-              {error}
+              {listError}
             </ThemedText>
             <Pressable onPress={() => void loadTasks()} style={styles.retryButton}>
               <ThemedView type="backgroundElement" style={styles.retryButtonContent}>
@@ -99,11 +243,20 @@ export default function HomeScreen() {
               styles.listContent,
               tasks.length === 0 && styles.emptyListContent,
             ]}
+            ListHeaderComponent={
+              actionError || listError ? (
+                <ThemedView type="backgroundElement" style={styles.errorBanner}>
+                  <ThemedText type="small" style={styles.errorText}>
+                    {actionError ?? listError}
+                  </ThemedText>
+                </ThemedView>
+              ) : null
+            }
             ListEmptyComponent={
               <View style={styles.centeredState}>
                 <ThemedText>No tasks yet.</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  Create a task from the backend to see it here.
+                  Add your first task to get started.
                 </ThemedText>
               </View>
             }
@@ -111,14 +264,21 @@ export default function HomeScreen() {
           />
         )}
       </SafeAreaView>
+
+      <TaskFormModal
+        error={actionError}
+        isSaving={isSubmitting}
+        onClose={closeForm}
+        onSave={handleFormSave}
+        task={editingTask}
+        visible={isFormVisible}
+      />
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   safeArea: {
     flex: 1,
     width: '100%',
@@ -126,18 +286,25 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   header: {
-    gap: Spacing.one,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.two,
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
+  },
+  addButton: { borderRadius: Spacing.two },
+  addButtonContent: {
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
   },
   listContent: {
     gap: Spacing.two,
     paddingHorizontal: Spacing.four,
     paddingBottom: BottomTabInset + Spacing.four,
   },
-  emptyListContent: {
-    flexGrow: 1,
-  },
+  emptyListContent: { flexGrow: 1 },
   centeredState: {
     flex: 1,
     alignItems: 'center',
@@ -150,34 +317,30 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     borderRadius: Spacing.four,
   },
-  completedTaskCard: {
-    opacity: 0.65,
-  },
+  completedTaskCard: { opacity: 0.65 },
   taskHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: Spacing.two,
   },
-  taskTitle: {
-    flex: 1,
-    fontWeight: 700,
-  },
-  completedTaskTitle: {
-    textDecorationLine: 'line-through',
-  },
+  taskTitle: { flex: 1, fontWeight: 700 },
+  completedTaskTitle: { textDecorationLine: 'line-through' },
   priorityBadge: {
     borderRadius: Spacing.one,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,
   },
-  errorText: {
-    color: '#D92D20',
-    textAlign: 'center',
+  taskActions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
+  taskActionButton: { borderRadius: Spacing.one },
+  taskActionContent: {
+    borderRadius: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
   },
-  retryButton: {
-    borderRadius: Spacing.two,
-  },
+  errorBanner: { borderRadius: Spacing.two, padding: Spacing.two },
+  errorText: { color: '#D92D20', textAlign: 'center' },
+  retryButton: { borderRadius: Spacing.two },
   retryButtonContent: {
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
