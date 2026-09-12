@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { testDatabaseConnection } from "./db.js";
+import assistantRouter from "./routes/assistant.routes.js";
 import taskRouter from "./routes/task.routes.js";
 
 dotenv.config();
@@ -20,6 +21,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/tasks", taskRouter);
+app.use("/assistant", assistantRouter);
 
 async function startServer(): Promise<void> {
   try {
