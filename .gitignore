@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Android
+android/.gradle/
+android/local.properties
+*.keystore
+*.jks
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build output
+build/
