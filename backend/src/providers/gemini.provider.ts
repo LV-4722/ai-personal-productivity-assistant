@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { AssistantContext, AssistantIntent } from "../types/assistant.js";
 
 const DEFAULT_MODEL = "gemini-3.5-flash-lite";
+const DEFAULT_APP_TIMEZONE = "Asia/Kolkata";
 
 const ASSISTANT_INTENT_SCHEMA = {
   type: "object",
@@ -43,6 +44,26 @@ const ASSISTANT_INTENT_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isValidDateOrNull(value: unknown): value is string | null {
+  if (value === null) {
+    return true;
+  }
+
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  return !Number.isNaN(new Date(value).getTime());
+}
+
 function isAssistantIntent(value: unknown): value is AssistantIntent {
   if (typeof value !== "object" || value === null || !("action" in value)) {
     return false;
@@ -57,47 +78,42 @@ function isAssistantIntent(value: unknown): value is AssistantIntent {
   if (intent.action === "CREATE_TASK") {
     const task = intent.task;
     return (
-      typeof task === "object" &&
-      task !== null &&
-      typeof (task as Record<string, unknown>).title === "string" &&
-      ((task as Record<string, unknown>).description === null ||
-        typeof (task as Record<string, unknown>).description === "string") &&
-      ["LOW", "MEDIUM", "HIGH"].includes(
-        String((task as Record<string, unknown>).priority),
-      ) &&
-      ((task as Record<string, unknown>).due_date === null ||
-        typeof (task as Record<string, unknown>).due_date === "string")
+      isRecord(task) &&
+      isNonEmptyString(task.title) &&
+      (task.description === null || typeof task.description === "string") &&
+      typeof task.priority === "string" &&
+      ["LOW", "MEDIUM", "HIGH"].includes(task.priority) &&
+      isValidDateOrNull(task.due_date)
     );
   }
 
   if (intent.action === "LIST_TASKS") {
     const filter = intent.filter;
     return (
-      typeof filter === "object" &&
-      filter !== null &&
-      ((filter as Record<string, unknown>).due_date === null ||
-        typeof (filter as Record<string, unknown>).due_date === "string") &&
-      ((filter as Record<string, unknown>).completed === null ||
-        typeof (filter as Record<string, unknown>).completed === "boolean")
+      isRecord(filter) &&
+      isValidDateOrNull(filter.due_date) &&
+      (filter.completed === null || typeof filter.completed === "boolean")
     );
   }
 
   if (intent.action === "COMPLETE_TASK") {
     const taskReference = intent.task_reference;
     return (
-      typeof taskReference === "object" &&
-      taskReference !== null &&
-      typeof (taskReference as Record<string, unknown>).title === "string"
+      isRecord(taskReference) && isNonEmptyString(taskReference.title)
     );
   }
 
   return false;
 }
 
+export function getApplicationTimeZone(): string {
+  return process.env.APP_TIMEZONE || DEFAULT_APP_TIMEZONE;
+}
+
 function getAssistantContext(): AssistantContext {
   return {
     currentDateTime: new Date().toISOString(),
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    timeZone: getApplicationTimeZone(),
   };
 }
 
