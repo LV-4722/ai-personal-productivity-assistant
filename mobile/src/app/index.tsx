@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, SafeAreaView, StyleSheet, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 
 import { TaskFormModal } from '@/components/task-form-modal';
 import { ThemedText } from '@/components/themed-text';
@@ -28,33 +29,52 @@ export default function HomeScreen() {
   const [listError, setListError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mutatingTaskId, setMutatingTaskId] = useState<number | null>(null);
+  const hasLoadedTasksRef = useRef(false);
+  const isRefreshingRef = useRef(false);
   const theme = useTheme();
 
-  const loadTasks = useCallback(async (showLoading = true) => {
-    if (showLoading) {
+  const refreshTasks = useCallback(async () => {
+    if (isRefreshingRef.current) {
+      return;
+    }
+
+    isRefreshingRef.current = true;
+    const isInitialLoad = !hasLoadedTasksRef.current;
+
+    if (isInitialLoad) {
       setIsLoading(true);
+    } else {
+      setIsRefreshing(true);
     }
 
     setListError(null);
 
     try {
       setTasks(await getTasks());
+      hasLoadedTasksRef.current = true;
     } catch (error) {
       setListError(errorMessage(error, 'Unable to load tasks.'));
     } finally {
-      if (showLoading) {
+      isRefreshingRef.current = false;
+
+      if (isInitialLoad) {
         setIsLoading(false);
+      } else {
+        setIsRefreshing(false);
       }
     }
   }, []);
 
-  useEffect(() => {
-    void loadTasks();
-  }, [loadTasks]);
+  useFocusEffect(
+    useCallback(() => {
+      void refreshTasks();
+    }, [refreshTasks]),
+  );
 
   const openCreateForm = () => {
     setActionError(null);
@@ -91,7 +111,7 @@ export default function HomeScreen() {
 
       setIsFormVisible(false);
       setEditingTask(null);
-      await loadTasks(false);
+      await refreshTasks();
     } catch (error) {
       setActionError(errorMessage(error, 'Unable to save task.'));
     } finally {
@@ -105,7 +125,7 @@ export default function HomeScreen() {
 
     try {
       await updateTask(task.id, { completed: !task.completed });
-      await loadTasks(false);
+      await refreshTasks();
     } catch (error) {
       setActionError(errorMessage(error, 'Unable to update task.'));
     } finally {
@@ -119,7 +139,7 @@ export default function HomeScreen() {
 
     try {
       await deleteTask(task.id);
-      await loadTasks(false);
+      await refreshTasks();
     } catch (error) {
       setActionError(errorMessage(error, 'Unable to delete task.'));
     } finally {
@@ -212,11 +232,22 @@ export default function HomeScreen() {
               Your current task list
             </ThemedText>
           </View>
-          <Pressable onPress={openCreateForm} style={styles.addButton}>
-            <ThemedView type="backgroundSelected" style={styles.addButtonContent}>
-              <ThemedText type="smallBold">Add task</ThemedText>
-            </ThemedView>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              accessibilityLabel="Refresh tasks"
+              disabled={isLoading || isRefreshing}
+              onPress={() => void refreshTasks()}
+              style={styles.addButton}>
+              <ThemedView type="backgroundSelected" style={styles.addButtonContent}>
+                <ThemedText type="smallBold">{isRefreshing ? 'Refreshing...' : 'Refresh'}</ThemedText>
+              </ThemedView>
+            </Pressable>
+            <Pressable onPress={openCreateForm} style={styles.addButton}>
+              <ThemedView type="backgroundSelected" style={styles.addButtonContent}>
+                <ThemedText type="smallBold">Add task</ThemedText>
+              </ThemedView>
+            </Pressable>
+          </View>
         </View>
 
         {isLoading ? (
@@ -228,7 +259,7 @@ export default function HomeScreen() {
             <ThemedText type="small" style={styles.errorText}>
               {listError}
             </ThemedText>
-            <Pressable onPress={() => void loadTasks()} style={styles.retryButton}>
+            <Pressable onPress={() => void refreshTasks()} style={styles.retryButton}>
               <ThemedView type="backgroundElement" style={styles.retryButtonContent}>
                 <ThemedText type="smallBold">Try again</ThemedText>
               </ThemedView>
@@ -239,6 +270,8 @@ export default function HomeScreen() {
             data={tasks}
             renderItem={renderTask}
             keyExtractor={(item) => String(item.id)}
+            onRefresh={() => void refreshTasks()}
+            refreshing={isRefreshing}
             contentContainerStyle={[
               styles.listContent,
               tasks.length === 0 && styles.emptyListContent,
@@ -294,6 +327,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   addButton: { borderRadius: Spacing.two },
+  headerActions: { flexDirection: 'row', gap: Spacing.two },
   addButtonContent: {
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
