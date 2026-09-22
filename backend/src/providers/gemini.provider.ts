@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { AssistantContext, AssistantIntent } from "../types/assistant.js";
 import { TaskPriority } from "../types/task.js";
 
-const DEFAULT_MODEL = "gemini-3.5-flash-lite";
+const DEFAULT_MODEL = "gemini-3.6-flash";
 const DEFAULT_APP_TIMEZONE = "Asia/Kolkata";
 
 const ASSISTANT_INTENT_SCHEMA = {
@@ -258,21 +258,30 @@ export async function generateAssistantIntent(
   const { client, model } = getGeminiClient();
 
   let response;
+  let attempts = 0;
+  const maxAttempts = 4;
 
-  try {
-    response = await client.models.generateContent({
-      model,
-      contents: buildPrompt(message, context),
-      config: {
-        responseMimeType: "application/json",
-        responseJsonSchema: ASSISTANT_INTENT_SCHEMA,
-      },
-    });
-  } catch (error) {
-    throw new Error("Gemini intent generation failed.", { cause: error });
+  while (attempts < maxAttempts) {
+    try {
+      attempts++;
+      response = await client.models.generateContent({
+        model,
+        contents: buildPrompt(message, context),
+        config: {
+          responseMimeType: "application/json",
+          responseJsonSchema: ASSISTANT_INTENT_SCHEMA,
+        },
+      });
+      break;
+    } catch (error) {
+      if (attempts >= maxAttempts) {
+        throw new Error("Gemini intent generation failed.", { cause: error });
+      }
+      await new Promise((resolve) => setTimeout(resolve, attempts * 1000));
+    }
   }
 
-  if (!response.text?.trim()) {
+  if (!response || !response.text?.trim()) {
     throw new Error("Gemini returned an empty intent response.");
   }
 
