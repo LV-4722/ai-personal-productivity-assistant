@@ -27,6 +27,9 @@ export default function AppTabs() {
           <TabTrigger name="assistant" href="/assistant" asChild>
             <TabButton>Assistant</TabButton>
           </TabTrigger>
+          <TabTrigger name="tasks" href="/tasks" asChild>
+            <TabButton>Tasks</TabButton>
+          </TabTrigger>
         </CustomTabList>
       </TabList>
     </Tabs>

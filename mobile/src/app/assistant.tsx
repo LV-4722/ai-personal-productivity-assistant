@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -8,12 +9,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FoodWorkflowPanel } from '@/components/food/food-workflow-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { sendAssistantMessage } from '@/services/assistant-api';
 import { AssistantResponse } from '@/types/assistant';
@@ -59,49 +61,72 @@ function formatAssistantResponse(response: AssistantResponse): string {
 }
 
 export default function AssistantScreen() {
+  const { q } = useLocalSearchParams<{ q?: string; action?: string }>();
   const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [foodSession, setFoodSession] = useState<FoodApiResponse | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const processedInitialQueryRef = useRef<string | null>(null);
   const theme = useTheme();
 
-  const sendMessage = async () => {
-    const text = input.trim();
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      listRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, []);
 
-    if (!text || isSending) {
-      return;
-    }
-
-    setMessages((current) => [
-      ...current,
-      { id: `user-${Date.now()}`, role: 'user', text },
-    ]);
-    setInput('');
-    setError(null);
-    setIsSending(true);
-
-    try {
-      const response = await sendAssistantMessage(text, foodSession?.sessionId);
-
-      if (response.foodSession) {
-        setFoodSession(response.foodSession);
+  const handleSendPrompt = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || isSending) {
+        return;
       }
 
       setMessages((current) => [
         ...current,
-        {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          text: formatAssistantResponse(response),
-        },
+        { id: `user-${Date.now()}`, role: 'user', text: trimmed },
       ]);
-    } catch (requestError) {
-      setError(errorMessage(requestError));
-    } finally {
-      setIsSending(false);
+      setInput('');
+      setError(null);
+      setIsSending(true);
+      scrollToBottom();
+
+      try {
+        const response = await sendAssistantMessage(trimmed, foodSession?.sessionId);
+
+        if (response.foodSession) {
+          setFoodSession(response.foodSession);
+        }
+
+        setMessages((current) => [
+          ...current,
+          {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            text: formatAssistantResponse(response),
+          },
+        ]);
+        scrollToBottom();
+      } catch (requestError) {
+        setError(errorMessage(requestError));
+      } finally {
+        setIsSending(false);
+      }
+    },
+    [foodSession?.sessionId, isSending, scrollToBottom],
+  );
+
+  useEffect(() => {
+    if (q && processedInitialQueryRef.current !== q) {
+      processedInitialQueryRef.current = q;
+      void handleSendPrompt(q);
     }
+  }, [q, handleSendPrompt]);
+
+  const sendMessage = async () => {
+    await handleSendPrompt(input);
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
@@ -125,6 +150,7 @@ export default function AssistantScreen() {
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.select({ ios: 'padding', android: undefined })}
+        keyboardVerticalOffset={Platform.select({ ios: 90, android: 0 })}
         style={styles.container}>
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
           <View style={styles.header}>
@@ -145,6 +171,18 @@ export default function AssistantScreen() {
                 onStateChange={setFoodSession}
               />
             }
+            ListFooterComponent={
+              isSending ? (
+                <View style={styles.typingRow}>
+                  <ThemedView type="backgroundElement" style={styles.typingBubble}>
+                    <ActivityIndicator color="#2563EB" size="small" />
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Assistant is thinking…
+                    </ThemedText>
+                  </ThemedView>
+                </View>
+              ) : null
+            }
             contentContainerStyle={styles.messagesContent}
             keyboardShouldPersistTaps="handled"
             style={styles.messagesList}
@@ -162,14 +200,22 @@ export default function AssistantScreen() {
             <TextInput
               editable={!isSending}
               multiline
-              onChangeText={setInput}
+              onChangeText={(t) => {
+                setInput(t);
+                if (error) setError(null);
+              }}
               placeholder="Ask about your tasks..."
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { borderColor: theme.backgroundSelected, color: theme.text }]}
               value={input}
             />
-            <Pressable disabled={isSending || !input.trim()} onPress={() => void sendMessage()}>
-              <ThemedView type="backgroundSelected" style={styles.sendButton}>
+            <Pressable
+              disabled={isSending || !input.trim()}
+              onPress={() => void sendMessage()}
+              style={({ pressed }) => [pressed && styles.pressed]}>
+              <ThemedView
+                type="backgroundSelected"
+                style={[styles.sendButton, (!input.trim() || isSending) && styles.disabledButton]}>
                 <ThemedText type="smallBold">{isSending ? 'Sending...' : 'Send'}</ThemedText>
               </ThemedView>
             </Pressable>
@@ -206,5 +252,16 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.two,
   },
   input: { borderRadius: Spacing.two, borderWidth: 1, flex: 1, maxHeight: 120, minHeight: 44, padding: Spacing.two },
-  sendButton: { borderRadius: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three },
+  sendButton: { borderRadius: Spacing.two, minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: Spacing.four, paddingVertical: Spacing.two },
+  disabledButton: { opacity: 0.5 },
+  pressed: { opacity: 0.75 },
+  typingRow: { alignItems: 'flex-start', marginVertical: Spacing.one },
+  typingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
 });
