@@ -59,6 +59,31 @@ export interface Address {
   country: string;
 }
 
+export interface CustomizationOption {
+  id: string;
+  name: string;
+  price: number;
+  type: "EXTRA" | "REMOVAL";
+}
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  type: "CREDIT_CARD" | "UPI" | "CASH_ON_DELIVERY";
+}
+
+export interface FoodOrderConfirmation {
+  orderId: string;
+  confirmedAt: Date;
+  restaurant: Restaurant;
+  items: Item[];
+  customizations: Customization[];
+  address: Address | null;
+  paymentMethod: PaymentMethod;
+  totalAmount: number;
+  estimatedDeliveryMinutes: number | null;
+}
+
 /**
  * A partially-completed food order accumulated across workflow steps.
  * Every field is optional because the order is built incrementally.
@@ -70,6 +95,7 @@ export interface PartialFoodOrder {
   items?: Item[];
   customizations?: Customization[];
   address?: Address;
+  paymentMethod?: PaymentMethod;
 }
 
 /**
@@ -80,6 +106,7 @@ export interface FoodOrderState {
   currentStep: FoodWorkflowStep;
   order: PartialFoodOrder;
   completedSteps: FoodWorkflowStep[];
+  confirmation?: FoodOrderConfirmation;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -93,4 +120,5 @@ export interface FoodWorkflowResult {
   order: PartialFoodOrder;
   message: string;
   isComplete: boolean;
+  confirmation?: FoodOrderConfirmation;
 }

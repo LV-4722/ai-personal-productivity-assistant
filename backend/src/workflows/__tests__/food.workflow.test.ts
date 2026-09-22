@@ -587,3 +587,39 @@ describe("transition() immutability on validation failure", () => {
     expect(engine.getCurrentStep()).toBe("DELIVERY_MODE");
   });
 });
+
+// ---------------------------------------------------------------------------
+// 12. Order confirmation payload generated upon reaching CONFIRMED
+// ---------------------------------------------------------------------------
+
+describe("order confirmation payload generation", () => {
+  it("populates result.confirmation when completing payment", () => {
+    const engine = newEngine();
+    engine.transition(); // → DELIVERY_MODE
+    engine.setDeliveryMode("DELIVERY");
+    engine.setFoodType("BURGER");
+    engine.setRestaurant(RESTAURANT);
+    engine.setItems([ITEM]);
+    engine.setCustomizations([CUSTOMIZATION]);
+    engine.setAddress(ADDRESS);
+    engine.confirmReview(); // → PAYMENT
+
+    const result = engine.confirmPayment({
+      id: "pay-1",
+      name: "Visa ending in 4242",
+      type: "CREDIT_CARD",
+    });
+
+    expect(result.isComplete).toBe(true);
+    expect(result.currentStep).toBe("CONFIRMED");
+    expect(result.confirmation).toBeDefined();
+    expect(result.confirmation?.orderId).toMatch(/^ORD-TESTSESSION1-/);
+    expect(result.confirmation?.restaurant.name).toBe("Burger Palace");
+    expect(result.confirmation?.items[0].name).toBe("Classic Burger");
+    expect(result.confirmation?.customizations[0].notes).toBe("No onions");
+    expect(result.confirmation?.address?.line1).toBe("12 Main St");
+    expect(result.confirmation?.paymentMethod.name).toBe("Visa ending in 4242");
+    expect(result.confirmation?.totalAmount).toBeGreaterThan(0);
+    expect(result.confirmation?.estimatedDeliveryMinutes).toBe(30);
+  });
+});

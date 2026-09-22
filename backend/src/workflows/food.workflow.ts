@@ -2,14 +2,17 @@ import {
   Address,
   Customization,
   DeliveryMode,
+  FoodOrderConfirmation,
   FoodOrderState,
   FoodType,
   FoodWorkflowResult,
   FoodWorkflowStep,
   Item,
   PartialFoodOrder,
+  PaymentMethod,
   Restaurant,
 } from "../types/food.js";
+import { FoodMockService } from "../services/food-mock.service.js";
 
 // ---------------------------------------------------------------------------
 // Step ordering — the canonical sequence of the workflow.
@@ -192,16 +195,28 @@ function cloneOrder(order: PartialFoodOrder): PartialFoodOrder {
         removals: [...c.removals],
       })),
     }),
+    ...(order.paymentMethod !== undefined && { paymentMethod: { ...order.paymentMethod } }),
   };
 }
 
 function toResult(state: FoodOrderState, message: string): FoodWorkflowResult {
+  let confirmation = state.confirmation;
+
+  if (state.currentStep === "CONFIRMED" && !confirmation) {
+    confirmation = FoodMockService.generateOrderConfirmation(
+      state.order,
+      state.sessionId,
+      state.updatedAt
+    );
+  }
+
   return {
     sessionId: state.sessionId,
     currentStep: state.currentStep,
     order: cloneOrder(state.order),
     message,
     isComplete: state.currentStep === "CONFIRMED",
+    ...(confirmation && { confirmation }),
   };
 }
 
@@ -245,6 +260,7 @@ export class FoodWorkflowEngine {
       ...this.state,
       order: cloneOrder(this.state.order),
       completedSteps: [...this.state.completedSteps],
+      ...(this.state.confirmation && { confirmation: { ...this.state.confirmation } }),
     };
   }
 
@@ -332,10 +348,20 @@ export class FoodWorkflowEngine {
     const completedStep = this.state.currentStep;
     const nextStep = this.getNextStep();
 
+    let confirmation: FoodOrderConfirmation | undefined = undefined;
+    if (nextStep === "CONFIRMED") {
+      confirmation = FoodMockService.generateOrderConfirmation(
+        this.state.order,
+        this.state.sessionId,
+        nowDate()
+      );
+    }
+
     this.state = {
       ...this.state,
       currentStep: nextStep,
       completedSteps: [...this.state.completedSteps, completedStep],
+      ...(confirmation && { confirmation }),
       updatedAt: nowDate(),
     };
 
@@ -395,6 +421,7 @@ export class FoodWorkflowEngine {
       currentStep: "ORDER_FOOD",
       order: {},
       completedSteps: [],
+      confirmation: undefined,
       updatedAt: nowDate(),
     };
 
@@ -436,11 +463,18 @@ export class FoodWorkflowEngine {
     return this.transition();
   }
 
+  setPaymentMethod(paymentMethod: PaymentMethod): FoodWorkflowResult {
+    return this.updateOrder({ paymentMethod });
+  }
+
   confirmReview(): FoodWorkflowResult {
     return this.transition();
   }
 
-  confirmPayment(): FoodWorkflowResult {
+  confirmPayment(paymentMethod?: PaymentMethod): FoodWorkflowResult {
+    if (paymentMethod) {
+      this.updateOrder({ paymentMethod });
+    }
     return this.transition();
   }
 }
