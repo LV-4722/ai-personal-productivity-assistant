@@ -17,6 +17,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { sendAssistantMessage } from '@/services/assistant-api';
 import { AssistantResponse } from '@/types/assistant';
+import { FoodApiResponse } from '@/types/food';
 
 type ChatMessage = {
   id: string;
@@ -62,6 +63,7 @@ export default function AssistantScreen() {
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [foodSession, setFoodSession] = useState<FoodApiResponse | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const theme = useTheme();
 
@@ -81,7 +83,11 @@ export default function AssistantScreen() {
     setIsSending(true);
 
     try {
-      const response = await sendAssistantMessage(text);
+      const response = await sendAssistantMessage(text, foodSession?.sessionId);
+
+      if (response.foodSession) {
+        setFoodSession(response.foodSession);
+      }
 
       setMessages((current) => [
         ...current,
@@ -133,7 +139,12 @@ export default function AssistantScreen() {
             data={messages}
             renderItem={renderMessage}
             keyExtractor={(item) => item.id}
-            ListHeaderComponent={<FoodWorkflowPanel />}
+            ListHeaderComponent={
+              <FoodWorkflowPanel
+                externalSession={foodSession}
+                onStateChange={setFoodSession}
+              />
+            }
             contentContainerStyle={styles.messagesContent}
             keyboardShouldPersistTaps="handled"
             style={styles.messagesList}

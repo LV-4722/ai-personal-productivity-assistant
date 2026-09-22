@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { AddressCardList } from './address-card';
@@ -36,14 +36,27 @@ interface Props {
   sessionId?: string;
   initialOrder?: PartialFoodOrder;
   onStateChange?: (response: FoodApiResponse) => void;
+  externalSession?: FoodApiResponse | null;
 }
 
-export function FoodWorkflowPanel({ sessionId, initialOrder, onStateChange }: Props) {
-  const [session, setSession] = useState<FoodApiResponse | null>(null);
+export function FoodWorkflowPanel({
+  sessionId,
+  initialOrder,
+  onStateChange,
+  externalSession,
+}: Props) {
+  const [session, setSession] = useState<FoodApiResponse | null>(externalSession || null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const activeSessionId = session?.sessionId || sessionId || 'active-food-session';
+  useEffect(() => {
+    if (externalSession) {
+      setSession(externalSession);
+    }
+  }, [externalSession]);
+
+  const activeSessionId =
+    session?.sessionId || externalSession?.sessionId || sessionId || 'active-food-session';
 
   const handleStartSession = async (customInitialOrder?: PartialFoodOrder) => {
     setIsLoading(true);

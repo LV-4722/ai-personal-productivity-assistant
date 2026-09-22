@@ -31,11 +31,14 @@ async function getErrorMessage(response: Response): Promise<string> {
   return `Request failed (${response.status} ${response.statusText}).`;
 }
 
-export async function sendAssistantMessage(message: string): Promise<AssistantResponse> {
+export async function sendAssistantMessage(
+  message: string,
+  sessionId?: string,
+): Promise<AssistantResponse> {
   const response = await fetch(`${getApiBaseUrl()}/assistant`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, sessionId }),
   });
 
   if (!response.ok) {

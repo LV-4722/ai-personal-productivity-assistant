@@ -15,6 +15,7 @@ const ASSISTANT_INTENT_SCHEMA = {
         "LIST_TASKS",
         "UPDATE_TASK",
         "COMPLETE_TASK",
+        "ORDER_FOOD",
         "UNKNOWN",
       ],
     },
@@ -55,6 +56,27 @@ const ASSISTANT_INTENT_SCHEMA = {
         priority: { type: "string", enum: ["LOW", "MEDIUM", "HIGH"] },
         due_date: { type: ["string", "null"], format: "date-time" },
       },
+      additionalProperties: false,
+    },
+    food_order: {
+      type: "object",
+      properties: {
+        item_name: { type: ["string", "null"] },
+        food_type: { type: ["string", "null"] },
+        delivery_mode: {
+          type: ["string", "null"],
+          enum: ["DELIVERY", "PICKUP", "DINE_IN", null],
+        },
+        quantity: { type: ["integer", "null"] },
+        restaurant_name: { type: ["string", "null"] },
+      },
+      required: [
+        "item_name",
+        "food_type",
+        "delivery_mode",
+        "quantity",
+        "restaurant_name",
+      ],
       additionalProperties: false,
     },
   },
@@ -168,6 +190,25 @@ function isAssistantIntent(value: unknown): value is AssistantIntent {
     );
   }
 
+  if (intent.action === "ORDER_FOOD") {
+    const foodOrder = intent.food_order;
+    return (
+      isRecord(foodOrder) &&
+      (foodOrder.item_name === null || typeof foodOrder.item_name === "string") &&
+      (foodOrder.food_type === null || typeof foodOrder.food_type === "string") &&
+      (foodOrder.delivery_mode === null ||
+        foodOrder.delivery_mode === "DELIVERY" ||
+        foodOrder.delivery_mode === "PICKUP" ||
+        foodOrder.delivery_mode === "DINE_IN") &&
+      (foodOrder.quantity === null ||
+        (typeof foodOrder.quantity === "number" &&
+          Number.isInteger(foodOrder.quantity) &&
+          foodOrder.quantity > 0)) &&
+      (foodOrder.restaurant_name === null ||
+        typeof foodOrder.restaurant_name === "string")
+    );
+  }
+
   return false;
 }
 
@@ -205,6 +246,7 @@ Determine the user's requested action. Return only JSON matching the supplied sc
 Do not return markdown or explanations. Do not execute actions. Do not invent database IDs.
 Do not generate SQL. Use only the supported actions.
 For relative dates, use the current date/time and timezone above, and return an ISO-8601 timestamp.
+For food ordering requests, set action to ORDER_FOOD and extract mentioned item names, food types, delivery modes, quantities, or restaurant names into food_order. Do not determine workflow steps, UI state, navigation, or available options.
 
 User message: ${message}`;
 }

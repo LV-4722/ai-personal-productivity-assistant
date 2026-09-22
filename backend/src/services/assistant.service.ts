@@ -7,7 +7,14 @@ import {
   getTasks,
   updateTask,
 } from "./task.service.js";
-import { AssistantIntent } from "../types/assistant.js";
+import {
+  advanceFoodStep,
+  createOrGetFoodSession,
+  FoodApiResponse,
+} from "./food.service.js";
+import { FoodMockService } from "./food-mock.service.js";
+import { AssistantIntent, OrderFoodIntent } from "../types/assistant.js";
+import { FoodType, PartialFoodOrder } from "../types/food.js";
 import { Task, UpdateTaskInput } from "../types/task.js";
 
 export interface AssistantServiceResult {
@@ -15,6 +22,93 @@ export interface AssistantServiceResult {
   message: string;
   task?: Task;
   tasks?: Task[];
+  foodSession?: FoodApiResponse;
+}
+
+const CANONICAL_FOOD_TYPES: FoodType[] = [
+  "PIZZA",
+  "BURGER",
+  "SUSHI",
+  "INDIAN",
+  "CHINESE",
+  "MEXICAN",
+  "ITALIAN",
+  "THAI",
+  "MEDITERRANEAN",
+  "FAST_FOOD",
+  "HEALTHY",
+  "DESSERT",
+  "OTHER",
+];
+
+function normalizeFoodType(value: string): FoodType | null {
+  const normalized = value.trim().toUpperCase().replace(/[-\s]+/g, "_");
+  const match = CANONICAL_FOOD_TYPES.find((ft) => ft === normalized);
+  return match ?? null;
+}
+
+export function mapOrderFoodIntentToPartialOrder(
+  intent: OrderFoodIntent,
+): PartialFoodOrder {
+  const foodOrder = intent.food_order;
+  const partialOrder: PartialFoodOrder = {};
+
+  if (!foodOrder) {
+    return partialOrder;
+  }
+
+  if (
+    foodOrder.delivery_mode === "DELIVERY" ||
+    foodOrder.delivery_mode === "PICKUP" ||
+    foodOrder.delivery_mode === "DINE_IN"
+  ) {
+    partialOrder.deliveryMode = foodOrder.delivery_mode;
+  }
+
+  if (typeof foodOrder.food_type === "string" && foodOrder.food_type.trim()) {
+    const canonical = normalizeFoodType(foodOrder.food_type);
+    if (canonical) {
+      partialOrder.foodType = canonical;
+    }
+  }
+
+  if (
+    typeof foodOrder.restaurant_name === "string" &&
+    foodOrder.restaurant_name.trim()
+  ) {
+    const restaurant = FoodMockService.findRestaurantByName(
+      foodOrder.restaurant_name,
+    );
+    if (restaurant) {
+      partialOrder.restaurant = restaurant;
+      if (!partialOrder.foodType) {
+        partialOrder.foodType = restaurant.cuisine;
+      }
+    }
+  }
+
+  if (typeof foodOrder.item_name === "string" && foodOrder.item_name.trim()) {
+    const item = FoodMockService.findItemByName(
+      foodOrder.item_name,
+      partialOrder.restaurant?.id,
+    );
+    if (item) {
+      partialOrder.items = [item];
+      if (!partialOrder.restaurant) {
+        const restaurant = FoodMockService.findRestaurantById(
+          item.restaurantId,
+        );
+        if (restaurant) {
+          partialOrder.restaurant = restaurant;
+          if (!partialOrder.foodType) {
+            partialOrder.foodType = restaurant.cuisine;
+          }
+        }
+      }
+    }
+  }
+
+  return partialOrder;
 }
 
 function parseDueDate(value: string | null): Date | null {
@@ -70,6 +164,7 @@ function isDueOnDate(task: Task, dueDate: Date, timeZone: string): boolean {
 
 export async function handleAssistantMessage(
   message: string,
+  sessionId?: string,
 ): Promise<AssistantServiceResult> {
   if (message.trim().length === 0) {
     throw new Error("Assistant message is required.");
@@ -215,6 +310,21 @@ export async function handleAssistantMessage(
       intent,
       message: `Updated task: ${task.title}`,
       task,
+    };
+  }
+
+  if (intent.action === "ORDER_FOOD") {
+    const partialOrder = mapOrderFoodIntentToPartialOrder(intent);
+    let foodSession = createOrGetFoodSession(sessionId, partialOrder);
+
+    if (foodSession.currentStep === "ORDER_FOOD") {
+      foodSession = advanceFoodStep(foodSession.sessionId);
+    }
+
+    return {
+      intent,
+      message: foodSession.message,
+      foodSession,
     };
   }
 

@@ -5,6 +5,7 @@ export type AssistantAction =
   | "LIST_TASKS"
   | "UPDATE_TASK"
   | "COMPLETE_TASK"
+  | "ORDER_FOOD"
   | "UNKNOWN";
 
 export interface CreateTaskIntent {
@@ -46,6 +47,17 @@ export interface UpdateTaskIntent {
   };
 }
 
+export interface OrderFoodIntent {
+  action: "ORDER_FOOD";
+  food_order: {
+    item_name?: string | null;
+    food_type?: string | null;
+    delivery_mode?: "DELIVERY" | "PICKUP" | "DINE_IN" | null;
+    quantity?: number | null;
+    restaurant_name?: string | null;
+  };
+}
+
 export interface UnknownIntent {
   action: "UNKNOWN";
 }
@@ -55,6 +67,7 @@ export type AssistantIntent =
   | ListTasksIntent
   | UpdateTaskIntent
   | CompleteTaskIntent
+  | OrderFoodIntent
   | UnknownIntent;
 
 export interface AssistantContext {

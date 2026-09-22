@@ -1,8 +1,11 @@
+import { FoodApiResponse } from './food';
+
 export type AssistantAction =
   | 'CREATE_TASK'
   | 'LIST_TASKS'
   | 'UPDATE_TASK'
   | 'COMPLETE_TASK'
+  | 'ORDER_FOOD'
   | 'UNKNOWN';
 
 export interface AssistantIntent {
@@ -23,4 +26,5 @@ export interface AssistantResponse {
   message: string;
   task?: AssistantTask;
   tasks?: AssistantTask[];
+  foodSession?: FoodApiResponse;
 }

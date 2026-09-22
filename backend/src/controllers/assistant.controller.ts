@@ -5,7 +5,7 @@ export async function handleAssistantMessageController(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const { message } = req.body;
+  const { message, sessionId } = req.body;
 
   if (typeof message !== "string" || message.trim().length === 0) {
     res.status(400).json({
@@ -15,7 +15,10 @@ export async function handleAssistantMessageController(
   }
 
   try {
-    const result = await handleAssistantMessage(message);
+    const result = await handleAssistantMessage(
+      message,
+      typeof sessionId === "string" ? sessionId : undefined,
+    );
 
     res.status(200).json(result);
   } catch (error) {
