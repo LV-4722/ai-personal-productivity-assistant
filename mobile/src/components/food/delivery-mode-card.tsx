@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useResponsive } from '@/hooks/use-responsive';
 import { DeliveryMode } from '@/types/food';
 
 interface Props {
@@ -32,18 +33,24 @@ const MODES: { mode: DeliveryMode; title: string; subtitle: string; icon: string
 ];
 
 export function DeliveryModeCard({ onSelect, disabled }: Props) {
+  const { isWide } = useResponsive();
+
   return (
     <ThemedView type="backgroundElement" style={styles.container}>
       <ThemedText type="smallBold" themeColor="textSecondary" style={styles.header}>
         STEP 1: SELECT DELIVERY MODE
       </ThemedText>
 
-      <View style={styles.optionsList}>
+      <View style={[styles.optionsList, isWide && styles.optionsListWide]}>
         {MODES.map((item) => (
           <Pressable
             key={item.mode}
             disabled={disabled}
-            style={({ pressed }) => [styles.optionCard, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.optionCard,
+              isWide && styles.optionCardWide,
+              pressed && styles.pressed,
+            ]}
             onPress={() => onSelect(item.mode)}>
             <ThemedText style={styles.icon}>{item.icon}</ThemedText>
             <View style={styles.textContainer}>
@@ -71,6 +78,10 @@ const styles = StyleSheet.create({
   optionsList: {
     gap: Spacing.two,
   },
+  optionsListWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -78,6 +89,12 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     backgroundColor: 'rgba(150, 150, 150, 0.08)',
     gap: Spacing.three,
+  },
+  optionCardWide: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 200,
+    maxWidth: 320,
   },
   pressed: {
     opacity: 0.7,

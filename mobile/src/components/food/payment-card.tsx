@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useResponsive } from '@/hooks/use-responsive';
 import { PaymentMethod } from '@/types/food';
 
 interface Props {
@@ -25,6 +26,7 @@ export function PaymentCardList({
   onPlaceOrder,
   disabled,
 }: Props) {
+  const { isWide } = useResponsive();
   const [selectedId, setSelectedId] = useState<string>(
     paymentMethods[0]?.id || 'pay-1'
   );
@@ -45,7 +47,7 @@ export function PaymentCardList({
       </ThemedText>
 
       {/* Payment Method Cards */}
-      <View style={styles.list}>
+      <View style={[styles.list, isWide && styles.listWide]}>
         {paymentMethods.map((method) => {
           const isSelected = method.id === selectedId;
           const icon = METHOD_ICONS[method.type] || '💳';
@@ -56,6 +58,7 @@ export function PaymentCardList({
               disabled={disabled}
               style={({ pressed }) => [
                 styles.methodCard,
+                isWide && styles.methodCardWide,
                 isSelected && styles.methodCardSelected,
                 pressed && styles.pressed,
               ]}
@@ -112,6 +115,10 @@ const styles = StyleSheet.create({
   list: {
     gap: Spacing.two,
   },
+  listWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
   methodCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -121,6 +128,12 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     borderWidth: 1,
     borderColor: 'transparent',
+  },
+  methodCardWide: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 200,
+    maxWidth: 320,
   },
   methodCardSelected: {
     borderColor: '#2563EB',

@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useResponsive } from '@/hooks/use-responsive';
 import { useTheme } from '@/hooks/use-theme';
 
 const SAMPLE_PROMPTS = [
@@ -25,6 +26,7 @@ const SAMPLE_PROMPTS = [
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { isWide } = useResponsive();
   const [prompt, setPrompt] = useState('');
 
   const handleAskAssistant = (customText?: string) => {
@@ -142,11 +144,15 @@ export default function HomeScreen() {
               </ThemedText>
             </View>
 
-            <View style={styles.quickActionsGrid}>
+            <View style={[styles.quickActionsGrid, isWide && styles.quickActionsGridWide]}>
               {/* Card 1: Order Food */}
               <Pressable
                 onPress={handleNavigateOrderFood}
-                style={({ pressed }) => [styles.actionCardWrapper, pressed && styles.pressed]}>
+                style={({ pressed }) => [
+                  styles.actionCardWrapper,
+                  isWide && styles.actionCardWrapperWide,
+                  pressed && styles.pressed,
+                ]}>
                 <ThemedView type="backgroundElement" style={styles.actionCard}>
                   <View style={styles.cardHeaderRow}>
                     <ThemedText type="subtitle">🍔 Order Food</ThemedText>
@@ -165,7 +171,11 @@ export default function HomeScreen() {
               {/* Card 2: Manage Tasks */}
               <Pressable
                 onPress={handleNavigateManageTasks}
-                style={({ pressed }) => [styles.actionCardWrapper, pressed && styles.pressed]}>
+                style={({ pressed }) => [
+                  styles.actionCardWrapper,
+                  isWide && styles.actionCardWrapperWide,
+                  pressed && styles.pressed,
+                ]}>
                 <ThemedView type="backgroundElement" style={styles.actionCard}>
                   <View style={styles.cardHeaderRow}>
                     <ThemedText type="subtitle">📋 Manage Tasks</ThemedText>
@@ -184,7 +194,11 @@ export default function HomeScreen() {
               {/* Card 3: Reminders */}
               <Pressable
                 onPress={handleNavigateReminders}
-                style={({ pressed }) => [styles.actionCardWrapper, pressed && styles.pressed]}>
+                style={({ pressed }) => [
+                  styles.actionCardWrapper,
+                  isWide && styles.actionCardWrapperWide,
+                  pressed && styles.pressed,
+                ]}>
                 <ThemedView type="backgroundElement" style={styles.actionCard}>
                   <View style={styles.cardHeaderRow}>
                     <ThemedText type="subtitle">⏰ Reminders</ThemedText>
@@ -286,14 +300,25 @@ const styles = StyleSheet.create({
   quickActionsGrid: {
     gap: Spacing.three,
   },
+  quickActionsGridWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
   actionCardWrapper: {
     borderRadius: Spacing.three,
+  },
+  actionCardWrapperWide: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 260,
+    maxWidth: 440,
   },
   actionCard: {
     borderRadius: Spacing.three,
     padding: Spacing.four,
     gap: Spacing.two,
     minHeight: 110,
+    height: '100%',
   },
   cardHeaderRow: {
     flexDirection: 'row',

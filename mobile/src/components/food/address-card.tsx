@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useResponsive } from '@/hooks/use-responsive';
 import { useTheme } from '@/hooks/use-theme';
 import { Address } from '@/types/food';
 
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function AddressCardList({ addresses, onSelect, disabled }: Props) {
+  const { isWide } = useResponsive();
   const [showForm, setShowForm] = useState(false);
   const [line1, setLine1] = useState('');
   const [line2, setLine2] = useState('');
@@ -47,12 +49,16 @@ export function AddressCardList({ addresses, onSelect, disabled }: Props) {
       </ThemedText>
 
       {/* Saved Addresses List */}
-      <View style={styles.list}>
+      <View style={[styles.list, isWide && styles.listWide]}>
         {addresses.map((addr, index) => (
           <Pressable
             key={`${addr.line1}-${index}`}
             disabled={disabled}
-            style={({ pressed }) => [styles.addressCard, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.addressCard,
+              isWide && styles.addressCardWide,
+              pressed && styles.pressed,
+            ]}
             onPress={() => onSelect(addr)}>
             <ThemedText style={styles.icon}>📍</ThemedText>
             <View style={styles.addressText}>
@@ -175,6 +181,10 @@ const styles = StyleSheet.create({
   list: {
     gap: Spacing.two,
   },
+  listWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
   addressCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -182,6 +192,12 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     backgroundColor: 'rgba(150, 150, 150, 0.08)',
     gap: Spacing.three,
+  },
+  addressCardWide: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 240,
+    maxWidth: 440,
   },
   pressed: {
     opacity: 0.7,

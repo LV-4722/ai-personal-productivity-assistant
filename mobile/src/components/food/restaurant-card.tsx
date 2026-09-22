@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useResponsive } from '@/hooks/use-responsive';
 import { Restaurant } from '@/types/food';
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
 }
 
 export function RestaurantCardList({ restaurants, onSelect, disabled }: Props) {
+  const { isWide } = useResponsive();
+
   return (
     <ThemedView type="backgroundElement" style={styles.container}>
       <ThemedText type="smallBold" themeColor="textSecondary" style={styles.header}>
@@ -23,12 +26,16 @@ export function RestaurantCardList({ restaurants, onSelect, disabled }: Props) {
           No restaurants available.
         </ThemedText>
       ) : (
-        <View style={styles.list}>
+        <View style={[styles.list, isWide && styles.listWide]}>
           {restaurants.map((restaurant) => (
             <Pressable
               key={restaurant.id}
               disabled={disabled}
-              style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.card,
+                isWide && styles.cardWide,
+                pressed && styles.pressed,
+              ]}
               onPress={() => onSelect(restaurant)}>
               <View style={styles.cardHeader}>
                 <ThemedText type="subtitle">{restaurant.name}</ThemedText>
@@ -71,11 +78,21 @@ const styles = StyleSheet.create({
   list: {
     gap: Spacing.two,
   },
+  listWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
   card: {
     padding: Spacing.three,
     borderRadius: Spacing.two,
     backgroundColor: 'rgba(150, 150, 150, 0.08)',
     gap: Spacing.one,
+  },
+  cardWide: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 240,
+    maxWidth: 440,
   },
   pressed: {
     opacity: 0.7,

@@ -15,7 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FoodWorkflowPanel } from '@/components/food/food-workflow-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useResponsive } from '@/hooks/use-responsive';
 import { useTheme } from '@/hooks/use-theme';
 import { sendAssistantMessage } from '@/services/assistant-api';
 import { AssistantResponse } from '@/types/assistant';
@@ -70,6 +71,7 @@ export default function AssistantScreen() {
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const processedInitialQueryRef = useRef<string | null>(null);
   const theme = useTheme();
+  const { isWide } = useResponsive();
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -136,7 +138,7 @@ export default function AssistantScreen() {
       <View style={[styles.messageRow, isUser && styles.userMessageRow]}>
         <ThemedView
           type={isUser ? 'backgroundSelected' : 'backgroundElement'}
-          style={styles.messageBubble}>
+          style={[styles.messageBubble, isWide && styles.messageBubbleWide]}>
           <ThemedText type="smallBold" themeColor="textSecondary">
             {isUser ? 'You' : 'Assistant'}
           </ThemedText>
@@ -240,6 +242,7 @@ const styles = StyleSheet.create({
   messageRow: { alignItems: 'flex-start' },
   userMessageRow: { alignItems: 'flex-end' },
   messageBubble: { borderRadius: Spacing.three, gap: Spacing.one, maxWidth: '88%', padding: Spacing.three },
+  messageBubbleWide: { maxWidth: 640 },
   messageText: { flexShrink: 1 },
   errorBanner: { borderRadius: Spacing.two, marginHorizontal: Spacing.four, padding: Spacing.two },
   errorText: { color: '#D92D20' },

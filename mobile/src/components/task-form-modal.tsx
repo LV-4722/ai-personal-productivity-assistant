@@ -11,6 +11,7 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useResponsive } from '@/hooks/use-responsive';
 import { useTheme } from '@/hooks/use-theme';
 import { CreateTaskInput, Task, TaskPriority } from '@/types/task';
 
@@ -57,6 +58,7 @@ export function TaskFormModal({
   const [dueDate, setDueDate] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const theme = useTheme();
+  const { isWide } = useResponsive();
 
   useEffect(() => {
     if (!visible) {
@@ -105,8 +107,8 @@ export function TaskFormModal({
           onClose();
         }
       }}>
-      <View style={styles.backdrop}>
-        <ThemedView type="background" style={styles.modal}>
+      <View style={[styles.backdrop, isWide && styles.backdropWide]}>
+        <ThemedView type="background" style={[styles.modal, isWide && styles.modalWide]}>
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <ThemedText type="subtitle">{task ? 'Edit task' : 'New task'}</ThemedText>
 
@@ -208,12 +210,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
+  backdropWide: {
+    justifyContent: 'center',
+    padding: Spacing.four,
+  },
   modal: {
     borderTopLeftRadius: Spacing.four,
     borderTopRightRadius: Spacing.four,
     maxHeight: '90%',
     paddingHorizontal: Spacing.four,
     width: '100%',
+  },
+  modalWide: {
+    maxWidth: 600,
+    borderRadius: Spacing.four,
   },
   content: {
     gap: Spacing.three,
