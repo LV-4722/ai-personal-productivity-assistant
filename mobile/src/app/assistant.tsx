@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FoodWorkflowPanel } from '@/components/food/food-workflow-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -123,7 +124,7 @@ export default function AssistantScreen() {
           <View style={styles.header}>
             <ThemedText type="subtitle">Assistant</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Ask naturally about your tasks.
+              Ask naturally about your tasks or order food below.
             </ThemedText>
           </View>
 
@@ -132,9 +133,9 @@ export default function AssistantScreen() {
             data={messages}
             renderItem={renderMessage}
             keyExtractor={(item) => item.id}
+            ListHeaderComponent={<FoodWorkflowPanel />}
             contentContainerStyle={styles.messagesContent}
             keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
             style={styles.messagesList}
           />
 

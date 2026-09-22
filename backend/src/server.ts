@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { testDatabaseConnection } from "./db.js";
 import assistantRouter from "./routes/assistant.routes.js";
 import taskRouter from "./routes/task.routes.js";
+import foodRouter from "./routes/food.routes.js";
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/tasks", taskRouter);
 app.use("/assistant", assistantRouter);
+app.use("/food", foodRouter);
 
 async function startServer(): Promise<void> {
   try {
