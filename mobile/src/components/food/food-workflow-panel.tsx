@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { AddressCardList } from './address-card';
@@ -46,14 +46,18 @@ export function FoodWorkflowPanel({
   externalSession,
 }: Props) {
   const [session, setSession] = useState<FoodApiResponse | null>(externalSession || null);
+  const [prevExternalSession, setPrevExternalSession] = useState<FoodApiResponse | null | undefined>(
+    externalSession
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  if (externalSession !== prevExternalSession) {
+    setPrevExternalSession(externalSession);
     if (externalSession) {
       setSession(externalSession);
     }
-  }, [externalSession]);
+  }
 
   const activeSessionId =
     session?.sessionId || externalSession?.sessionId || sessionId || 'active-food-session';

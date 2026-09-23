@@ -117,7 +117,7 @@ export default function AssistantScreen() {
         setIsSending(false);
       }
     },
-    [foodSession?.sessionId, isSending, scrollToBottom],
+    [foodSession, isSending, scrollToBottom],
   );
 
   useEffect(() => {

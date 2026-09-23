@@ -153,7 +153,9 @@ export default function HomeScreen() {
                   isWide && styles.actionCardWrapperWide,
                   pressed && styles.pressed,
                 ]}>
-                <ThemedView type="backgroundElement" style={styles.actionCard}>
+                <ThemedView
+                  type="backgroundElement"
+                  style={[styles.actionCard, isWide && styles.actionCardWide]}>
                   <View style={styles.cardHeaderRow}>
                     <ThemedText type="subtitle">🍔 Order Food</ThemedText>
                   </View>
@@ -176,7 +178,9 @@ export default function HomeScreen() {
                   isWide && styles.actionCardWrapperWide,
                   pressed && styles.pressed,
                 ]}>
-                <ThemedView type="backgroundElement" style={styles.actionCard}>
+                <ThemedView
+                  type="backgroundElement"
+                  style={[styles.actionCard, isWide && styles.actionCardWide]}>
                   <View style={styles.cardHeaderRow}>
                     <ThemedText type="subtitle">📋 Manage Tasks</ThemedText>
                   </View>
@@ -199,7 +203,9 @@ export default function HomeScreen() {
                   isWide && styles.actionCardWrapperWide,
                   pressed && styles.pressed,
                 ]}>
-                <ThemedView type="backgroundElement" style={styles.actionCard}>
+                <ThemedView
+                  type="backgroundElement"
+                  style={[styles.actionCard, isWide && styles.actionCardWide]}>
                   <View style={styles.cardHeaderRow}>
                     <ThemedText type="subtitle">⏰ Reminders</ThemedText>
                   </View>
@@ -318,6 +324,9 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.two,
     minHeight: 110,
+    justifyContent: 'space-between',
+  },
+  actionCardWide: {
     height: '100%',
   },
   cardHeaderRow: {

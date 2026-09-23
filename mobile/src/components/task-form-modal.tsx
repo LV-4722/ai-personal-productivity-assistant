@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -60,17 +60,20 @@ export function TaskFormModal({
   const theme = useTheme();
   const { isWide } = useResponsive();
 
-  useEffect(() => {
-    if (!visible) {
-      return;
-    }
+  const [prevTask, setPrevTask] = useState<Task | null | undefined>(undefined);
+  const [prevVisible, setPrevVisible] = useState(false);
 
-    setTitle(task?.title ?? '');
-    setDescription(task?.description ?? '');
-    setPriority(task?.priority ?? 'MEDIUM');
-    setDueDate(dateInputValue(task?.due_date ?? null));
-    setValidationError(null);
-  }, [task, visible]);
+  if (visible !== prevVisible || task !== prevTask) {
+    setPrevVisible(visible);
+    setPrevTask(task);
+    if (visible) {
+      setTitle(task?.title ?? '');
+      setDescription(task?.description ?? '');
+      setPriority(task?.priority ?? 'MEDIUM');
+      setDueDate(dateInputValue(task?.due_date ?? null));
+      setValidationError(null);
+    }
+  }
 
   const handleSave = async () => {
     const trimmedTitle = title.trim();
