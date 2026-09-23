@@ -245,7 +245,8 @@ Timezone: ${context.timeZone}
 Determine the user's requested action. Return only JSON matching the supplied schema.
 Do not return markdown or explanations. Do not execute actions. Do not invent database IDs.
 Do not generate SQL. Use only the supported actions.
-For relative dates, use the current date/time and timezone above, and return an ISO-8601 timestamp.
+For relative dates (e.g., "tomorrow at 10AM", "next Monday"), use the current date/time and timezone above, and return an ISO-8601 timestamp for due_date.
+For task creation, map any task request, reminder, action command (e.g., "Call Rahul tomorrow at 10AM", "Remind me to...", "Buy groceries", "Schedule meeting"), or todo item to CREATE_TASK with an appropriate title, description, priority, and due_date.
 For food ordering requests, set action to ORDER_FOOD and extract mentioned item names, food types, delivery modes, quantities, or restaurant names into food_order. Do not determine workflow steps, UI state, navigation, or available options.
 
 User message: ${message}`;
@@ -324,19 +325,35 @@ export function generateFallbackIntent(message: string): AssistantIntent {
   if (
     lower.startsWith("create") ||
     lower.startsWith("add") ||
+    lower.startsWith("call") ||
+    lower.startsWith("remind") ||
+    lower.startsWith("schedule") ||
+    lower.startsWith("buy") ||
+    lower.startsWith("pay") ||
+    lower.startsWith("email") ||
+    lower.startsWith("send") ||
+    lower.startsWith("meet") ||
+    lower.startsWith("do") ||
+    lower.startsWith("write") ||
     lower.includes("create a task") ||
-    lower.includes("new task")
+    lower.includes("new task") ||
+    lower.includes("task")
   ) {
-    const title =
-      message
-        .replace(/^(create|add|new)\s+(a\s+)?(task\s+)?(for\s+)?/i, "")
-        .trim() || "New Task";
+    let title = message
+      .replace(/^(create|add|new)\s+(a\s+)?(task\s+)?(for\s+)?/i, "")
+      .replace(/^(remind\s+(me\s+)?(to\s+)?)/i, "")
+      .trim();
+
+    if (!title) {
+      title = message.trim();
+    }
+
     return {
       action: "CREATE_TASK",
       task: {
         title,
         description: null,
-        priority: lower.includes("high") ? "HIGH" : "MEDIUM",
+        priority: lower.includes("high") || lower.includes("urgent") ? "HIGH" : "MEDIUM",
         due_date: null,
       },
     };

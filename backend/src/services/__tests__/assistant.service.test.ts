@@ -150,4 +150,15 @@ describe("assistant.service", () => {
       expect(res.foodSession?.currentStep).toBe("FOOD_TYPE");
     });
   });
+
+  describe("generateFallbackIntent", () => {
+    it("parses natural task commands such as 'Call Rahul tomorrow at 10AM'", () => {
+      const intent = geminiProvider.generateFallbackIntent("Call Rahul tomorrow at 10AM");
+      expect(intent.action).toBe("CREATE_TASK");
+      if (intent.action === "CREATE_TASK") {
+        expect(intent.task.title).toBe("Call Rahul tomorrow at 10AM");
+      }
+    });
+  });
 });
+
