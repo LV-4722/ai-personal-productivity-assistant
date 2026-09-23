@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import { CreateTaskInput, Task, UpdateTaskInput } from '@/types/task';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -9,7 +11,12 @@ function getApiBaseUrl(): string {
     );
   }
 
-  return API_BASE_URL.replace(/\/$/, '');
+  let url = API_BASE_URL.replace(/\/$/, '');
+  if (Platform.OS === 'android') {
+    url = url.replace('localhost', '10.0.2.2').replace('127.0.0.1', '10.0.2.2');
+  }
+
+  return url;
 }
 
 async function getErrorMessage(response: Response): Promise<string> {
