@@ -23,7 +23,6 @@ import { CreateTaskInput, Task } from '@/types/task';
 const SUGGESTION_CHIPS = [
   'Plan my day',
   'Pending tasks',
-  'Create a task',
   'Order food',
 ];
 
@@ -146,7 +145,7 @@ export default function HomeScreen() {
               <View style={styles.heroHeader}>
                 <ThemedText type="subtitle">What can I help you with?</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  Ask me anything about your tasks, schedule or plans.
+                  Ask me anything about your tasks, schedule, or ordering food.
                 </ThemedText>
               </View>
 
@@ -266,19 +265,6 @@ export default function HomeScreen() {
             </View>
 
             <View style={[styles.compactQuickActionsGrid, isWide && styles.compactQuickActionsGridWide]}>
-              {/* + New task */}
-              <Pressable
-                onPress={() => setIsFormVisible(true)}
-                style={({ pressed }) => [
-                  styles.compactActionChip,
-                  isWide && styles.compactActionChipWide,
-                  pressed && styles.pressed,
-                ]}>
-                <ThemedView type="backgroundElement" style={styles.compactActionContent}>
-                  <ThemedText type="smallBold">+ New task</ThemedText>
-                </ThemedView>
-              </Pressable>
-
               {/* 🍔 Order food */}
               <Pressable
                 onPress={handleNavigateOrderFood}
