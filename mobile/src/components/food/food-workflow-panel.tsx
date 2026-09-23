@@ -114,9 +114,10 @@ export function FoodWorkflowPanel({
     setIsLoading(true);
     setError(null);
     try {
-      const res = await resetFoodSession(activeSessionId);
-      setSession(res);
-      onStateChange?.(res);
+      await resetFoodSession(activeSessionId);
+      setSession(null);
+      setPrevExternalSession(null);
+      onStateChange?.(null as unknown as FoodApiResponse);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reset session.');
     } finally {

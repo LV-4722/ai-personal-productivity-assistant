@@ -251,53 +251,152 @@ For food ordering requests, set action to ORDER_FOOD and extract mentioned item 
 User message: ${message}`;
 }
 
+export function generateFallbackIntent(message: string): AssistantIntent {
+  const lower = message.toLowerCase().trim();
+
+  if (
+    lower.includes("food") ||
+    lower.includes("order") ||
+    lower.includes("biryani") ||
+    lower.includes("pizza") ||
+    lower.includes("burger") ||
+    lower.includes("eat") ||
+    lower.includes("dinner") ||
+    lower.includes("lunch")
+  ) {
+    let foodType: string | null = null;
+    if (lower.includes("biryani") || lower.includes("indian")) foodType = "INDIAN";
+    else if (lower.includes("pizza") || lower.includes("italian")) foodType = "ITALIAN";
+    else if (lower.includes("burger") || lower.includes("fast food")) foodType = "FAST_FOOD";
+    else if (lower.includes("sushi")) foodType = "SUSHI";
+    else if (lower.includes("chinese")) foodType = "CHINESE";
+    else if (lower.includes("mexican")) foodType = "MEXICAN";
+
+    let itemName: string | null = null;
+    if (lower.includes("biryani")) itemName = "Chicken Biryani";
+    else if (lower.includes("pizza")) itemName = "Margherita Pizza";
+    else if (lower.includes("burger")) itemName = "Classic Cheeseburger";
+
+    return {
+      action: "ORDER_FOOD",
+      food_order: {
+        item_name: itemName,
+        food_type: foodType,
+        delivery_mode: "DELIVERY",
+        quantity: 1,
+        restaurant_name: null,
+      },
+    };
+  }
+
+  if (
+    lower.includes("pending") ||
+    lower.includes("tasks") ||
+    lower.includes("list") ||
+    lower.includes("show tasks") ||
+    lower.includes("what tasks")
+  ) {
+    return {
+      action: "LIST_TASKS",
+      filter: {
+        due_date: null,
+        completed: lower.includes("completed") ? true : false,
+        priority: lower.includes("high") ? "HIGH" : null,
+      },
+    };
+  }
+
+  if (
+    lower.includes("plan") ||
+    lower.includes("schedule") ||
+    lower.includes("today")
+  ) {
+    return {
+      action: "LIST_TASKS",
+      filter: {
+        due_date: null,
+        completed: false,
+        priority: null,
+      },
+    };
+  }
+
+  if (
+    lower.startsWith("create") ||
+    lower.startsWith("add") ||
+    lower.includes("create a task") ||
+    lower.includes("new task")
+  ) {
+    const title =
+      message
+        .replace(/^(create|add|new)\s+(a\s+)?(task\s+)?(for\s+)?/i, "")
+        .trim() || "New Task";
+    return {
+      action: "CREATE_TASK",
+      task: {
+        title,
+        description: null,
+        priority: lower.includes("high") ? "HIGH" : "MEDIUM",
+        due_date: null,
+      },
+    };
+  }
+
+  return {
+    action: "UNKNOWN",
+  };
+}
+
 export async function generateAssistantIntent(
   message: string,
   context: AssistantContext = getAssistantContext(),
 ): Promise<AssistantIntent> {
-  const { client, model } = getGeminiClient();
-
-  let response;
-  let attempts = 0;
-  const maxAttempts = 4;
-
-  while (attempts < maxAttempts) {
-    try {
-      attempts++;
-      response = await client.models.generateContent({
-        model,
-        contents: buildPrompt(message, context),
-        config: {
-          responseMimeType: "application/json",
-          responseJsonSchema: ASSISTANT_INTENT_SCHEMA,
-        },
-      });
-      break;
-    } catch (error) {
-      if (attempts >= maxAttempts) {
-        throw new Error("Gemini intent generation failed.", { cause: error });
-      }
-      await new Promise((resolve) => setTimeout(resolve, attempts * 1000));
-    }
-  }
-
-  if (!response || !response.text?.trim()) {
-    throw new Error("Gemini returned an empty intent response.");
-  }
-
-  let intent: unknown;
-
   try {
-    intent = JSON.parse(response.text);
+    const { client, model } = getGeminiClient();
+
+    let response;
+    let attempts = 0;
+    const maxAttempts = 2;
+
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        response = await client.models.generateContent({
+          model,
+          contents: buildPrompt(message, context),
+          config: {
+            responseMimeType: "application/json",
+            responseJsonSchema: ASSISTANT_INTENT_SCHEMA,
+          },
+        });
+        break;
+      } catch (error) {
+        if (attempts >= maxAttempts) {
+          console.warn(
+            "Gemini API call rate limited or failed, falling back to rule-based intent parsing.",
+          );
+          return generateFallbackIntent(message);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+
+    if (!response || !response.text?.trim()) {
+      return generateFallbackIntent(message);
+    }
+
+    const intent: unknown = JSON.parse(response.text);
+
+    if (!isAssistantIntent(intent)) {
+      return generateFallbackIntent(message);
+    }
+
+    return intent;
   } catch (error) {
-    throw new Error("Gemini returned invalid JSON for the assistant intent.", {
-      cause: error,
-    });
+    console.warn(
+      "Falling back to local intent parser due to error:",
+      error instanceof Error ? error.message : error,
+    );
+    return generateFallbackIntent(message);
   }
-
-  if (!isAssistantIntent(intent)) {
-    throw new Error("Gemini returned an invalid assistant intent structure.");
-  }
-
-  return intent;
 }
